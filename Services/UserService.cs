@@ -18,7 +18,7 @@ namespace dotnet_training.Services
 
         public User GetWithEmail(string email, string password)
         {
-            return Users.FirstOrDefault(x => x.Email is not null && x.Email.Equals(email) && x.Password.Equals(password));
+            return Users.FirstOrDefault(x => x.Email.Equals(email) && x.Password.Equals(password));
         }
     }
 }
