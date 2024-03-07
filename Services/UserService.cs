@@ -30,40 +30,6 @@ namespace dotnet_training.Services
             return newUser;
         }
 
-        public async Task<User> AuthenticateAsync(string Email, string Password, string Username = null)
-        {
-            if (!string.IsNullOrEmpty(Email))
-            {
-                return await LoginWithEmailAsync(Email, Password);
-            }
-            else
-            {
-                return await LoginWithUsernameAsync(Username, Password);
-            }
-        }
-
-        public async Task<User> LoginWithEmailAsync(string Email, string Password)
-        {
-            //var user = await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower().Equals(Email.ToLower()));
-            //if (Helpers.Utils.VerifyPassword(Password, user.Password))
-            //    return user;
-            //else
-            //    return null;
-
-            return await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower().Equals(Email.ToLower()) && x.Password.Equals(Password));
-        }
-
-        public async Task<User> LoginWithUsernameAsync(string Username, string Password)
-        {
-            //var user = await _context.Users.FirstOrDefaultAsync(x => x.Username.Equals(Username));
-            //if (Helpers.Utils.VerifyPassword(Password, user.Password))
-            //    return user;
-            //else
-            //    return null;
-
-            return await _context.Users.FirstOrDefaultAsync(x => x.Username.Equals(Username) && x.Password.Equals(Password));
-        }
-
         public async Task<User> FindByIdAsync(long Id)
         {
             return await _context.Users.FirstOrDefaultAsync(x => x.Id == Id);
@@ -124,6 +90,18 @@ namespace dotnet_training.Services
             return user;
         }
 
+        public async Task<User> UpdateRoleAsync(User user, string Role)
+        {
+            user.Role = Role;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _context.Users.Entry(user).State = EntityState.Modified;
+
+            await _context.SaveChangesAsync();
+
+            return user;
+        }
+
         public async Task<User> UpdateAsync(User user, User updateUser)
         {
             //**Hash options in Utils for hasing password in one-way method**\\
@@ -150,6 +128,11 @@ namespace dotnet_training.Services
             await _context.SaveChangesAsync();
 
             return user;
+        }
+
+        public async Task<List<User>> FindAllRootUsers()
+        {
+            return await _context.Users.Where(x => x.Role.Equals("root")).ToListAsync();
         }
     }
 }
