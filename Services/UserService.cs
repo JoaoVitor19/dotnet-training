@@ -1,24 +1,155 @@
-﻿using dotnet_training.Models;
+﻿using dotnet_training.Data;
+using dotnet_training.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 
 namespace dotnet_training.Services
 {
     public class UserService
     {
-        private List<User> Users = new List<User>()
-        {
-            new User { Id = 1, Username = "jao", Password = "jao", Email = "jaovitordev@gmail.com", Role = string.Empty },
-            new User { Id = 2, Username = "jao1", Password = "jao1", Email = "jaovitordev1@gmail.com", Role = "developer" },
-            new User { Id = 3, Username = "jao2", Password = "jao2", Email = "jaovitordev2@gmail.com", Role = "support" },
-        };
+        private readonly AppDbContext _context;
 
-        public User GetWithUsername(string username, string password)
+        public UserService(AppDbContext context)
         {
-            return Users.FirstOrDefault(x => x.Username.Equals(username) && x.Password.Equals(password));
+            _context = context;
         }
 
-        public User GetWithEmail(string email, string password)
+        public async Task<User> Create(User user)
         {
-            return Users.FirstOrDefault(x => x.Email.Equals(email) && x.Password.Equals(password));
+            //**Hash options in Utils for hasing password in one-way method**\\
+            //
+            //  user.Password = Helpers.Utils.HashPassword(user.Password);
+            //
+            var newUser = new User(user.Username, user.Password, user.Email, user.Role, false, DateTime.UtcNow);
+
+            await _context.Users.AddAsync(newUser);
+            await _context.SaveChangesAsync();
+
+            newUser.Password = null;
+
+            return newUser;
+        }
+
+        public async Task<User> AuthenticateAsync(string Email, string Password, string Username = null)
+        {
+            if (!string.IsNullOrEmpty(Email))
+            {
+                return await LoginWithEmailAsync(Email, Password);
+            }
+            else
+            {
+                return await LoginWithUsernameAsync(Username, Password);
+            }
+        }
+
+        public async Task<User> LoginWithEmailAsync(string Email, string Password)
+        {
+            //var user = await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower().Equals(Email.ToLower()));
+            //if (Helpers.Utils.VerifyPassword(Password, user.Password))
+            //    return user;
+            //else
+            //    return null;
+
+            return await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower().Equals(Email.ToLower()) && x.Password.Equals(Password));
+        }
+
+        public async Task<User> LoginWithUsernameAsync(string Username, string Password)
+        {
+            //var user = await _context.Users.FirstOrDefaultAsync(x => x.Username.Equals(Username));
+            //if (Helpers.Utils.VerifyPassword(Password, user.Password))
+            //    return user;
+            //else
+            //    return null;
+
+            return await _context.Users.FirstOrDefaultAsync(x => x.Username.Equals(Username) && x.Password.Equals(Password));
+        }
+
+        public async Task<User> FindByIdAsync(long Id)
+        {
+            return await _context.Users.FirstOrDefaultAsync(x => x.Id == Id);
+        }
+
+        public async Task<User> FindByEmailAsync(string Email)
+        {
+            return await _context.Users.FirstOrDefaultAsync(x => x.Email.ToLower().Equals(Email.ToLower()));
+        }
+
+        public async Task<User> FindByUsernameAsync(string Username)
+        {
+            return await _context.Users.FirstOrDefaultAsync(x => x.Username.Equals(Username));
+        }
+
+        public async Task<List<User>> FindAllUsersAsync()
+        {
+            return await _context.Users.ToListAsync();
+        }
+
+        public async Task<User> UpdateEmailAsync(User user, string newEmail)
+        {
+            user.Email = newEmail;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _context.Users.Entry(user).State = EntityState.Modified;
+
+            await _context.SaveChangesAsync();
+
+            return user;
+        }
+
+        public async Task<User> UpdatePasswordAsync(User user, string newPassword)
+        {
+            //**Hash options in Utils for hasing password in one-way method**\\
+            //
+            //  user.Password = Helpers.Utils.HashPassword(newPassword);
+            //
+            user.Password = newPassword;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _context.Users.Entry(user).State = EntityState.Modified;
+
+            await _context.SaveChangesAsync();
+
+            return user;
+        }
+
+        public async Task<User> UpdateUsernameAsync(User user, string newUsername)
+        {
+            user.Username = newUsername;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _context.Users.Entry(user).State = EntityState.Modified;
+
+            await _context.SaveChangesAsync();
+
+            return user;
+        }
+
+        public async Task<User> UpdateAsync(User user, User updateUser)
+        {
+            //**Hash options in Utils for hasing password in one-way method**\\
+            //
+            //  user.Password = Helpers.Utils.HashPassword(updateUser.Password);
+            //
+
+            user.Username = updateUser.Username;
+            user.Password = updateUser.Password;
+            user.Email = updateUser.Email;
+            user.Role = updateUser.Role;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _context.Users.Entry(user).State = EntityState.Modified;
+
+            await _context.SaveChangesAsync();
+
+            return updateUser;
+        }
+
+        public async Task<User> DeteleAsync(User user)
+        {
+            user.IsDeleted = true;
+            await _context.SaveChangesAsync();
+
+            return user;
         }
     }
 }
