@@ -14,13 +14,13 @@ namespace dotnet_training.Services
             _context = context;
         }
 
-        public async Task<User> Create(User user)
+        public async Task<User> CreateAsync(User user)
         {
             //**Hash options in Utils for hasing password in one-way method**\\
             //
             //  user.Password = Helpers.Utils.HashPassword(user.Password);
             //
-            var newUser = new User(user.Username, user.Password, user.Email, user.Role, false, DateTime.UtcNow);
+            var newUser = new User(user.Username, user.Password, user.Email, user.Role, false);
 
             await _context.Users.AddAsync(newUser);
             await _context.SaveChangesAsync();

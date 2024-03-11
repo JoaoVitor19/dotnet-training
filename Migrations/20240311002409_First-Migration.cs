@@ -30,6 +30,11 @@ namespace dotnet_training.Migrations
                 {
                     table.PrimaryKey("PK_Users", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Id_Email",
+                table: "Users",
+                columns: new[] { "Id", "Email" });
         }
 
         /// <inheritdoc />

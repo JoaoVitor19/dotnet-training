@@ -1,6 +1,7 @@
 ﻿using dotnet_training.Data;
 using dotnet_training.Models;
 using dotnet_training.Services;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -9,51 +10,12 @@ namespace dotnet_training.Controllers
     [Route("[controller]")]
     public class UserController : Controller
     {
-        private readonly AppDbContext _context;
         private readonly UserService _userService;
         public UserController(AppDbContext context)
         {
-            _context = context;
             _userService = new UserService(context);
         }
         public record UserResponse(User User, string Token);
-        public record LoginRequest(string Email, string Password, string Username = null);
-        public record LoginResponse(string Username, string Email, string Role, string Token);
-
-        [HttpPost("Login")]
-        public async Task<ActionResult<LoginResponse>> Authenticate([FromBody] LoginRequest loginRequest)
-        {
-            if (string.IsNullOrEmpty(loginRequest.Password))
-                return BadRequest(new { message = "Password are required for login" });
-
-            User user = null;
-
-            if (string.IsNullOrEmpty(loginRequest.Username))
-            {
-                if (string.IsNullOrEmpty(loginRequest.Email))
-                {
-                    return BadRequest(new { message = "Email or Username are required for login" });
-                }
-                else
-                {
-                    user = await _userService.FindByEmailAsync(loginRequest.Email);
-                }
-            }
-            else
-            {
-                user = await _userService.FindByUsernameAsync(loginRequest.Username);
-            }
-
-            if (user is null) return Unauthorized(new { message = "User not found" });
-
-            if (user.Password != loginRequest.Password) return Unauthorized(new { message = "Invalid Credentials" });
-
-
-            var tokenService = new TokenService();
-            var token = tokenService.GenerateToken(user);
-
-            return Ok(new LoginResponse(user.Username, user.Email, user.Role ?? string.Empty, token));
-        }
 
         [HttpGet("FindUserById/{Id}")]
         public async Task<ActionResult<User>> FindUserById(long Id)
@@ -78,11 +40,13 @@ namespace dotnet_training.Controllers
             if (user is null)
                 return BadRequest("Data of user is needed");
 
-            if (string.IsNullOrEmpty(user.Email) || string.IsNullOrEmpty(user.Username))
-                return BadRequest("Email and username is needed");
+            var validator = new UserValidator();
+            var ValidationResults = validator.Validate(user);
+            if (ValidationResults.IsValid is false)
+            {
+                return BadRequest(string.Join(", ", ValidationResults.Errors.Select(s => s.ErrorMessage)) + ".");
+            }
 
-            if (Helpers.Utils.IsValidPassword(user.Password))
-                return BadRequest("Password not acceptable");
 
             var existingUser = await _userService.FindByEmailAsync(user.Email);
             if (existingUser is not null)
@@ -92,7 +56,7 @@ namespace dotnet_training.Controllers
             if (existingUser is not null)
                 return Conflict(new { message = "This username is not available" });
 
-            var createdUser = await _userService.Create(user);
+            var createdUser = await _userService.CreateAsync(user);
 
             return Created(string.Empty, createdUser);
         }
@@ -101,7 +65,7 @@ namespace dotnet_training.Controllers
         public async Task<ActionResult<User>> UpdateEmail(long Id, [FromBody] string newEmail)
         {
             //Validate if new email is valid;
-            if (!Helpers.Utils.IsValidEmail(newEmail))
+            if (!Helpers.Validators.IsValidEmail(newEmail))
                 return BadRequest(new { message = "New email is not valid" });
 
             var existingUser = await _userService.FindByIdAsync(Id);
@@ -127,6 +91,10 @@ namespace dotnet_training.Controllers
         [HttpPut("UpdateUsername/{Id}")]
         public async Task<ActionResult<User>> UpdateUsername(long Id, [FromBody] string newUsername)
         {
+            //Validate if new username is valid;
+            if (!Helpers.Validators.IsValidUsername(newUsername))
+                return BadRequest(new { message = "New username is not valid" });
+
             var existingUser = await _userService.FindByIdAsync(Id);
             if (existingUser is null)
                 return NotFound(new { message = "User not found" });
@@ -149,8 +117,8 @@ namespace dotnet_training.Controllers
         [HttpPut("UpdatePassword/{Id}")]
         public async Task<ActionResult<User>> UpdatePassword(long Id, [FromBody] string newPassword)
         {
-            //Validate if new email is valid;
-            if (!Helpers.Utils.IsValidPassword(newPassword))
+            //Validate if new password is valid;
+            if (!Helpers.Validators.IsValidPassword(newPassword))
                 return BadRequest(new { message = "New password is not valid" });
 
             var existingUser = await _userService.FindByIdAsync(Id);
@@ -202,9 +170,5 @@ namespace dotnet_training.Controllers
 
             return NoContent();
         }
-
-        [HttpGet("FindAllRootUsers")]
-        [Authorize(Roles = "root")]
-        public async Task<ActionResult<List<User>>> RoleRootUser() => await _userService.FindAllRootUsers();
     }
 }

@@ -53,6 +53,8 @@ namespace dotnet_training.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Id", "Email");
+
                     b.ToTable("Users");
                 });
 #pragma warning restore 612, 618

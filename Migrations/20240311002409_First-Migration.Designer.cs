@@ -12,7 +12,7 @@ using dotnet_training.Data;
 namespace dotnet_training.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20240307202015_First-Migration")]
+    [Migration("20240311002409_First-Migration")]
     partial class FirstMigration
     {
         /// <inheritdoc />
@@ -55,6 +55,8 @@ namespace dotnet_training.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Id", "Email");
 
                     b.ToTable("Users");
                 });
